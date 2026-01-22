@@ -13,8 +13,8 @@ int main(int argc, char **argv) {
     return 1;
   }
   //-- 读取图像
-  Mat img_1 = imread(argv[1], CV_LOAD_IMAGE_COLOR);
-  Mat img_2 = imread(argv[2], CV_LOAD_IMAGE_COLOR);
+  Mat img_1 = imread(argv[1], cv::IMREAD_COLOR);
+  Mat img_2 = imread(argv[2], cv::IMREAD_COLOR);
   assert(img_1.data != nullptr && img_2.data != nullptr);
 
   //-- 初始化
@@ -38,7 +38,8 @@ int main(int argc, char **argv) {
 
   Mat outimg1;
   drawKeypoints(img_1, keypoints_1, outimg1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-  imshow("ORB features", outimg1);
+  // imshow("ORB features", outimg1);
+  imwrite("../result/orb_features.png", outimg1);
 
   //-- 第三步:对两幅图像中的BRIEF描述子进行匹配，使用 Hamming 距离
   vector<DMatch> matches;
@@ -71,9 +72,11 @@ int main(int argc, char **argv) {
   Mat img_goodmatch;
   drawMatches(img_1, keypoints_1, img_2, keypoints_2, matches, img_match);
   drawMatches(img_1, keypoints_1, img_2, keypoints_2, good_matches, img_goodmatch);
-  imshow("all matches", img_match);
-  imshow("good matches", img_goodmatch);
-  waitKey(0);
+  // imshow("all matches", img_match);
+  // imshow("good matches", img_goodmatch);
+  imwrite("../result/all_matches.png", img_match);
+  imwrite("../result/good_matches.png", img_goodmatch);
+  // waitKey(0);
 
   return 0;
 }

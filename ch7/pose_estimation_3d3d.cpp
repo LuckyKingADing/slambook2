@@ -19,36 +19,42 @@
 using namespace std;
 using namespace cv;
 
+// 特征匹配：输入两张图，输出匹配好的特征点
 void find_feature_matches(
   const Mat &img_1, const Mat &img_2,
   std::vector<KeyPoint> &keypoints_1,
   std::vector<KeyPoint> &keypoints_2,
   std::vector<DMatch> &matches);
 
-// 像素坐标转相机归一化坐标
+// 像素坐标转相机归一化坐标：去除内参
 Point2d pixel2cam(const Point2d &p, const Mat &K);
 
+// ICP-SVD求解3D-3D位姿
 void pose_estimation_3d3d(
   const vector<Point3f> &pts1,
   const vector<Point3f> &pts2,
   Mat &R, Mat &t
 );
 
+// g2o非线性优化（BA）
 void bundleAdjustment(
   const vector<Point3f> &points_3d,
   const vector<Point3f> &points_2d,
   Mat &R, Mat &t
 );
 
+//位姿顶点 VertexPose
 /// vertex and edges used in g2o ba
+//模板参数：6（SE3 李代数维度）、Sophus::SE3d（位姿类型）；
 class VertexPose : public g2o::BaseVertex<6, Sophus::SE3d> {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-
+// 顶点初始化：位姿设为单位矩阵（无旋转/平移）
   virtual void setToOriginImpl() override {
     _estimate = Sophus::SE3d();
   }
 
+  // 增量更新：左乘扰动模型（核心）
   /// left multiplication on SE3
   virtual void oplusImpl(const double *update) override {
     Eigen::Matrix<double, 6, 1> update_eigen;
@@ -61,18 +67,22 @@ public:
   virtual bool write(ostream &out) const override {}
 };
 
+//3D-3D 误差边 EdgeProjectXYZRGBDPoseOnly
 /// g2o edge
 class EdgeProjectXYZRGBDPoseOnly : public g2o::BaseUnaryEdge<3, Eigen::Vector3d, VertexPose> {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 
+ // 构造函数：传入源点（第二帧3D点）
   EdgeProjectXYZRGBDPoseOnly(const Eigen::Vector3d &point) : _point(point) {}
-
+  
+  // 计算误差：观测值 - 预测值
   virtual void computeError() override {
     const VertexPose *pose = static_cast<const VertexPose *> ( _vertices[0] );
     _error = _measurement - pose->estimate() * _point;
   }
 
+    // 计算雅可比矩阵（误差对位姿的导数）
   virtual void linearizeOplus() override {
     VertexPose *pose = static_cast<VertexPose *>(_vertices[0]);
     Sophus::SE3d T = pose->estimate();
@@ -95,35 +105,43 @@ int main(int argc, char **argv) {
     return 1;
   }
   //-- 读取图像
-  Mat img_1 = imread(argv[1], CV_LOAD_IMAGE_COLOR);
-  Mat img_2 = imread(argv[2], CV_LOAD_IMAGE_COLOR);
+  Mat img_1 = imread(argv[1], cv::IMREAD_COLOR);
+  Mat img_2 = imread(argv[2], cv::IMREAD_COLOR);
 
+  // 特征匹配
   vector<KeyPoint> keypoints_1, keypoints_2;
   vector<DMatch> matches;
   find_feature_matches(img_1, img_2, keypoints_1, keypoints_2, matches);
   cout << "一共找到了" << matches.size() << "组匹配点" << endl;
 
-  // 建立3D点
-  Mat depth1 = imread(argv[3], CV_LOAD_IMAGE_UNCHANGED);       // 深度图为16位无符号数，单通道图像
-  Mat depth2 = imread(argv[4], CV_LOAD_IMAGE_UNCHANGED);       // 深度图为16位无符号数，单通道图像
+  // 建立3D点：从深度图反投影
+  Mat depth1 = imread(argv[3], cv::IMREAD_UNCHANGED);       // 深度图为16位无符号数，单通道图像
+  Mat depth2 = imread(argv[4], cv::IMREAD_UNCHANGED);       // 深度图为16位无符号数，单通道图像
   Mat K = (Mat_<double>(3, 3) << 520.9, 0, 325.1, 0, 521.0, 249.7, 0, 0, 1);
   vector<Point3f> pts1, pts2;
 
   for (DMatch m:matches) {
+    // 读取深度值（跳过无效深度）
     ushort d1 = depth1.ptr<unsigned short>(int(keypoints_1[m.queryIdx].pt.y))[int(keypoints_1[m.queryIdx].pt.x)];
     ushort d2 = depth2.ptr<unsigned short>(int(keypoints_2[m.trainIdx].pt.y))[int(keypoints_2[m.trainIdx].pt.x)];
     if (d1 == 0 || d2 == 0)   // bad depth
       continue;
+    // 像素坐标→相机归一化坐标
     Point2d p1 = pixel2cam(keypoints_1[m.queryIdx].pt, K);
     Point2d p2 = pixel2cam(keypoints_2[m.trainIdx].pt, K);
+
+    // 深度值归一化（除以5000，根据深度图单位）
     float dd1 = float(d1) / 5000.0;
     float dd2 = float(d2) / 5000.0;
+
+    // 生成3D点（相机坐标系）：根据归一化后的深度值和归一化后的相机坐标
     pts1.push_back(Point3f(p1.x * dd1, p1.y * dd1, dd1));
     pts2.push_back(Point3f(p2.x * dd2, p2.y * dd2, dd2));
   }
 
   cout << "3d-3d pairs: " << pts1.size() << endl;
   Mat R, t;
+   // 5. ICP-SVD求解位姿
   pose_estimation_3d3d(pts1, pts2, R, t);
   cout << "ICP via SVD results: " << endl;
   cout << "R = " << R << endl;
@@ -132,9 +150,10 @@ int main(int argc, char **argv) {
   cout << "t_inv = " << -R.t() * t << endl;
 
   cout << "calling bundle adjustment" << endl;
-
+  // 6. g2o非线性优化
   bundleAdjustment(pts1, pts2, R, t);
 
+  // 7. 验证结果：p1 = R*p2 + t
   // verify p1 = R * p2 + t
   for (int i = 0; i < 5; i++) {
     cout << "p1 = " << pts1[i] << endl;
@@ -256,7 +275,7 @@ void bundleAdjustment(
   typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType> LinearSolverType; // 线性求解器类型
   // 梯度下降方法，可以从GN, LM, DogLeg 中选
   auto solver = new g2o::OptimizationAlgorithmLevenberg(
-    g2o::make_unique<BlockSolverType>(g2o::make_unique<LinearSolverType>()));
+    std::make_unique<BlockSolverType>(std::make_unique<LinearSolverType>()));
   g2o::SparseOptimizer optimizer;     // 图模型
   optimizer.setAlgorithm(solver);   // 设置求解器
   optimizer.setVerbose(true);       // 打开调试输出
@@ -264,18 +283,18 @@ void bundleAdjustment(
   // vertex
   VertexPose *pose = new VertexPose(); // camera pose
   pose->setId(0);
-  pose->setEstimate(Sophus::SE3d());
+  pose->setEstimate(Sophus::SE3d());// 初始位姿：单位矩阵
   optimizer.addVertex(pose);
 
-  // edges
+  // edges 添加3D-3D误差边
   for (size_t i = 0; i < pts1.size(); i++) {
     EdgeProjectXYZRGBDPoseOnly *edge = new EdgeProjectXYZRGBDPoseOnly(
-      Eigen::Vector3d(pts2[i].x, pts2[i].y, pts2[i].z));
-    edge->setVertex(0, pose);
+      Eigen::Vector3d(pts2[i].x, pts2[i].y, pts2[i].z));// 源点（第二帧）
+    edge->setVertex(0, pose);// 连接位姿顶点
     edge->setMeasurement(Eigen::Vector3d(
-      pts1[i].x, pts1[i].y, pts1[i].z));
-    edge->setInformation(Eigen::Matrix3d::Identity());
-    optimizer.addEdge(edge);
+      pts1[i].x, pts1[i].y, pts1[i].z));// 观测值（第一帧）
+    edge->setInformation(Eigen::Matrix3d::Identity());// 信息矩阵（权重）
+    optimizer.addEdge(edge);// 添加边
   }
 
   chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
@@ -288,7 +307,7 @@ void bundleAdjustment(
   cout << endl << "after optimization:" << endl;
   cout << "T=\n" << pose->estimate().matrix() << endl;
 
-  // convert to cv::Mat
+  // convert to cv::Mat 转换为OpenCV格式
   Eigen::Matrix3d R_ = pose->estimate().rotationMatrix();
   Eigen::Vector3d t_ = pose->estimate().translation();
   R = (Mat_<double>(3, 3) <<

@@ -41,8 +41,8 @@ int main(int argc, char **argv) {
     return 1;
   }
   //-- 读取图像
-  Mat img_1 = imread(argv[1], CV_LOAD_IMAGE_COLOR);
-  Mat img_2 = imread(argv[2], CV_LOAD_IMAGE_COLOR);
+  Mat img_1 = imread(argv[1], cv::IMREAD_COLOR);
+  Mat img_2 = imread(argv[2], cv::IMREAD_COLOR);
 
   vector<KeyPoint> keypoints_1, keypoints_2;
   vector<DMatch> matches;
@@ -73,9 +73,11 @@ int main(int argc, char **argv) {
     float depth2 = pt2_trans.at<double>(2, 0);
     cv::circle(img2_plot, keypoints_2[matches[i].trainIdx].pt, 2, get_color(depth2), 2);
   }
-  cv::imshow("img 1", img1_plot);
-  cv::imshow("img 2", img2_plot);
-  cv::waitKey();
+  // cv::imshow("img 1", img1_plot);
+  // cv::imshow("img 2", img2_plot);
+  cv::imwrite("../result/triangulation_img1.png", img1_plot);
+  cv::imwrite("../result/triangulation_img2.png", img2_plot);
+  // cv::waitKey();
 
   return 0;
 }

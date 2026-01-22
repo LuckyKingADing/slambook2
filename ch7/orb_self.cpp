@@ -4,7 +4,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <string>
-#include <nmmintrin.h>
+// #include <nmmintrin.h>
 #include <chrono>
 
 using namespace std;
@@ -36,10 +36,14 @@ void ComputeORB(const cv::Mat &img, vector<cv::KeyPoint> &keypoints, vector<Desc
 void BfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vector<cv::DMatch> &matches);
 
 int main(int argc, char **argv) {
+  if (argc != 3) {
+    cout << "usage: orb_self img1 img2" << endl;
+    return 1;
+  }
 
   // load image
-  cv::Mat first_image = cv::imread(first_file, 0);
-  cv::Mat second_image = cv::imread(second_file, 0);
+  cv::Mat first_image = cv::imread(argv[1], 0);
+  cv::Mat second_image = cv::imread(argv[2], 0);
   assert(first_image.data != nullptr && second_image.data != nullptr);
 
   // detect FAST keypoints1 using threshold=40
@@ -70,9 +74,9 @@ int main(int argc, char **argv) {
   // plot the matches
   cv::Mat image_show;
   cv::drawMatches(first_image, keypoints1, second_image, keypoints2, matches, image_show);
-  cv::imshow("matches", image_show);
-  cv::imwrite("matches.png", image_show);
-  cv::waitKey(0);
+  // cv::imshow("matches", image_show);
+  cv::imwrite("../result/matches.png", image_show);
+  // cv::waitKey(0);
 
   cout << "done." << endl;
   return 0;
@@ -404,7 +408,7 @@ void BfMatch(const vector<DescType> &desc1, const vector<DescType> &desc2, vecto
       if (desc2[i2].empty()) continue;
       int distance = 0;
       for (int k = 0; k < 8; k++) {
-        distance += _mm_popcnt_u32(desc1[i1][k] ^ desc2[i2][k]);
+        distance += __builtin_popcount(desc1[i1][k] ^ desc2[i2][k]);
       }
       if (distance < d_max && distance < m.distance) {
         m.distance = distance;
