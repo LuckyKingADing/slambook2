@@ -4,6 +4,7 @@
 #include <pangolin/pangolin.h>
 
 using namespace std;
+using namespace Sophus;
 
 typedef vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>> VecVector2d;
 
@@ -29,7 +30,7 @@ public:
         const cv::Mat &img2_,
         const VecVector2d &px_ref_,
         const vector<double> depth_ref_,
-        Sophus::SE3d &T21_) :
+        SE3d &T21_) :
         img1(img1_), img2(img2_), px_ref(px_ref_), depth_ref(depth_ref_), T21(T21_) {
         projection = VecVector2d(px_ref.size(), Eigen::Vector2d(0, 0));
     }
@@ -61,7 +62,7 @@ private:
     const cv::Mat &img2;
     const VecVector2d &px_ref;
     const vector<double> depth_ref;
-    Sophus::SE3d &T21;
+    SE3d &T21;
     VecVector2d projection; // projected points
 
     std::mutex hessian_mutex;
@@ -83,8 +84,8 @@ void DirectPoseEstimationMultiLayer(
     const cv::Mat &img2,
     const VecVector2d &px_ref,
     const vector<double> depth_ref,
-    Sophus::SE3d &T21
-);
+    SE3d &T21,
+    int i);
 
 /**
  * pose estimation using direct method
@@ -99,8 +100,9 @@ void DirectPoseEstimationSingleLayer(
     const cv::Mat &img2,
     const VecVector2d &px_ref,
     const vector<double> depth_ref,
-    Sophus::SE3d &T21
-);
+    SE3d &T21,
+    bool save_image = false,
+    int i = 0);
 
 // bilinear interpolation
 inline float GetPixelValue(const cv::Mat &img, float x, float y) {
@@ -143,13 +145,13 @@ int main(int argc, char **argv) {
     }
 
     // estimates 01~05.png's pose using this information
-    Sophus::SE3d T_cur_ref;
+    SE3d T_cur_ref;
 
     for (int i = 1; i < 6; i++) {  // 1~10
         cv::Mat img = cv::imread((fmt_others % i).str(), 0);
         // try single layer by uncomment this line
         // DirectPoseEstimationSingleLayer(left_img, img, pixels_ref, depth_ref, T_cur_ref);
-        DirectPoseEstimationMultiLayer(left_img, img, pixels_ref, depth_ref, T_cur_ref);
+        DirectPoseEstimationMultiLayer(left_img, img, pixels_ref, depth_ref, T_cur_ref, i);
     }
     return 0;
 }
@@ -159,7 +161,9 @@ void DirectPoseEstimationSingleLayer(
     const cv::Mat &img2,
     const VecVector2d &px_ref,
     const vector<double> depth_ref,
-    Sophus::SE3d &T21) {
+    SE3d &T21,
+    bool save_image,
+    int i) {
 
     const int iterations = 10;
     double cost = 0, lastCost = 0;
@@ -175,7 +179,7 @@ void DirectPoseEstimationSingleLayer(
 
         // solve update and put it into estimation
         Vector6d update = H.ldlt().solve(b);;
-        T21 = Sophus::SE3d::exp(update) * T21;
+                T21 = SE3d::exp(update) * T21;
         cost = jaco_accu.cost_func();
 
         if (std::isnan(update[0])) {
@@ -203,7 +207,7 @@ void DirectPoseEstimationSingleLayer(
 
     // plot the projected pixels here
     cv::Mat img2_show;
-    cv::cvtColor(img2, img2_show, CV_GRAY2BGR);
+    cv::cvtColor(img2, img2_show, cv::COLOR_GRAY2BGR);
     VecVector2d projection = jaco_accu.projected_points();
     for (size_t i = 0; i < px_ref.size(); ++i) {
         auto p_ref = px_ref[i];
@@ -214,8 +218,9 @@ void DirectPoseEstimationSingleLayer(
                      cv::Scalar(0, 250, 0));
         }
     }
-    cv::imshow("current", img2_show);
-    cv::waitKey();
+    if (save_image) {
+        cv::imwrite("./result/current_" + std::to_string(i) + ".png", img2_show);
+    }
 }
 
 void JacobianAccumulator::accumulate_jacobian(const cv::Range &range) {
@@ -297,7 +302,8 @@ void DirectPoseEstimationMultiLayer(
     const cv::Mat &img2,
     const VecVector2d &px_ref,
     const vector<double> depth_ref,
-    Sophus::SE3d &T21) {
+    SE3d &T21,
+    int i) {
 
     // parameters
     int pyramids = 4;
@@ -333,7 +339,7 @@ void DirectPoseEstimationMultiLayer(
         fy = fyG * scales[level];
         cx = cxG * scales[level];
         cy = cyG * scales[level];
-        DirectPoseEstimationSingleLayer(pyr1[level], pyr2[level], px_ref_pyr, depth_ref, T21);
+        DirectPoseEstimationSingleLayer(pyr1[level], pyr2[level], px_ref_pyr, depth_ref, T21, level == 0, i);
     }
 
 }
