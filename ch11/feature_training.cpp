@@ -24,22 +24,22 @@ int main( int argc, char** argv ) {
     }
     // detect ORB features
     cout<<"detecting ORB features ... "<<endl;
-    Ptr< Feature2D > detector = ORB::create();
-    vector<Mat> descriptors;
+    Ptr< Feature2D > detector = ORB::create(); // 创建 ORB 特征检测器，默认参数
+    vector<Mat> descriptors; // 存储所有图像的描述子
     for ( Mat& image:images )
     {
-        vector<KeyPoint> keypoints; 
-        Mat descriptor;
-        detector->detectAndCompute( image, Mat(), keypoints, descriptor );
-        descriptors.push_back( descriptor );
+        vector<KeyPoint> keypoints; // 存储关键点
+        Mat descriptor; // 存储描述子，存储单个图像的描述子
+        detector->detectAndCompute( image, Mat(), keypoints, descriptor ); // 检测关键点并计算描述子
+        descriptors.push_back( descriptor ); // 将单个图像的描述子加入到描述子集合中
     }
     
     // create vocabulary 
     cout<<"creating vocabulary ... "<<endl;
-    DBoW3::Vocabulary vocab;
-    vocab.create( descriptors );
-    cout<<"vocabulary info: "<<vocab<<endl;
-    vocab.save( "vocabulary.yml.gz" );
+    DBoW3::Vocabulary vocab;  // DBoW3 词汇对象，用于存储视觉词典；内部会把这些描述子聚类构建视觉单词（通常通过层次 k-means）。
+    vocab.create( descriptors ); // 训练字典，默认参数：10层，5个子节点
+    cout<<"vocabulary info: "<<vocab<<endl; 
+    vocab.save( "vocabulary.yml.gz" ); // 保存字典文件到vocabulary.yml.gz 保存为压缩 YAML，便于后续加载。
     cout<<"done"<<endl;
     
     return 0;
