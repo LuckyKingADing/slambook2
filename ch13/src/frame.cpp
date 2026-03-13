@@ -32,9 +32,9 @@ Frame::Ptr Frame::CreateFrame() {
 }
 
 void Frame::SetKeyFrame() {
-    static long keyframe_factory_id = 0;
-    is_keyframe_ = true;
-    keyframe_id_ = keyframe_factory_id++;
+    static long keyframe_factory_id = 0; // 静态变量，用于生成唯一的关键帧ID
+    is_keyframe_ = true;                // 将当前帧标记为关键帧
+    keyframe_id_ = keyframe_factory_id++; // 分配唯一的关键帧ID，并自增
 }
 
 }

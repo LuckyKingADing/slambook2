@@ -16,8 +16,8 @@ class Map {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef std::shared_ptr<Map> Ptr;
-    typedef std::unordered_map<unsigned long, MapPoint::Ptr> LandmarksType;
-    typedef std::unordered_map<unsigned long, Frame::Ptr> KeyframesType;
+    typedef std::unordered_map<unsigned long, MapPoint::Ptr> LandmarksType; // 地图点，key为地图点id，value为地图点指针
+    typedef std::unordered_map<unsigned long, Frame::Ptr> KeyframesType;    // 关键帧，key为关键帧id，value为关键帧指针
 
     Map() {}
 
@@ -60,12 +60,12 @@ class Map {
     LandmarksType landmarks_;         // all landmarks
     LandmarksType active_landmarks_;  // active landmarks
     KeyframesType keyframes_;         // all key-frames
-    KeyframesType active_keyframes_;  // all key-frames
+    KeyframesType active_keyframes_;  // active key-frames
 
     Frame::Ptr current_frame_ = nullptr;
 
     // settings
-    int num_active_keyframes_ = 7;  // 激活的关键帧数量
+    int num_active_keyframes_ = 7;  // 激活的关键帧数量;在这里，激活的概念就相当于是滑动窗口中的帧，超过这个数量就把最旧的关键帧置为不活跃状态
 };
 }  // namespace myslam
 

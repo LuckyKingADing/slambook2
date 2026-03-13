@@ -25,21 +25,26 @@ namespace myslam {
 MapPoint::MapPoint(long id, Vec3 position) : id_(id), pos_(position) {}
 
 MapPoint::Ptr MapPoint::CreateNewMappoint() {
-    static long factory_id = 0;
+    /* factory_id 是一个静态变量，用于生成唯一的 ID。
+       每次调用该函数时，都会创建一个新的 MapPoint 对象，并将其 ID 设置为当前的 factory_id 值，然后将 factory_id 自增。*/
+    static long factory_id = 0; 
     MapPoint::Ptr new_mappoint(new MapPoint);
     new_mappoint->id_ = factory_id++;
     return new_mappoint;
 }
 
 void MapPoint::RemoveObservation(std::shared_ptr<Feature> feat) {
+    // 加锁以保护数据，防止多线程访问冲突
     std::unique_lock<std::mutex> lck(data_mutex_);
+
+    // 遍历 observations_，找到与给定特征点 feat 对应的观测
     for (auto iter = observations_.begin(); iter != observations_.end();
          iter++) {
-        if (iter->lock() == feat) {
-            observations_.erase(iter);
-            feat->map_point_.reset();
-            observed_times_--;
-            break;
+        if (iter->lock() == feat) { // 如果找到匹配的观测
+            observations_.erase(iter); // 从观测列表中移除该观测
+            feat->map_point_.reset(); // 将特征点的地图点关联重置为空：reset()函数的主要操作如下： H = Matrix6d::Zero();b = Vector6d::Zero(); cost = 0;
+            observed_times_--; // 观测次数减 1
+            break; // 退出循环
         }
     }
 }

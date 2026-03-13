@@ -21,8 +21,8 @@ struct MapPoint;
  */
 struct Feature {
    public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    typedef std::shared_ptr<Feature> Ptr;
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW; // Eigen内存对齐
+    typedef std::shared_ptr<Feature> Ptr; // Feature的智能指针
 
     std::weak_ptr<Frame> frame_;         // 持有该feature的frame
     cv::KeyPoint position_;              // 2D提取位置

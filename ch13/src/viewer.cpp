@@ -25,10 +25,19 @@ void Viewer::AddCurrentFrame(Frame::Ptr current_frame) {
 }
 
 void Viewer::UpdateMap() {
+    // 加锁以保护 viewer 数据，防止多线程访问冲突
     std::unique_lock<std::mutex> lck(viewer_data_mutex_);
+
+    // 确保地图对象不为空
     assert(map_ != nullptr);
+
+    // 获取活跃关键帧并更新到 Viewer 的数据中
     active_keyframes_ = map_->GetActiveKeyFrames();
+
+    // 获取活跃地图点并更新到 Viewer 的数据中
     active_landmarks_ = map_->GetActiveMapPoints();
+
+    // 标记地图已更新，通知 Viewer 需要刷新显示
     map_updated_ = true;
 }
 

@@ -13,7 +13,12 @@ namespace myslam {
 class Backend;
 class Viewer;
 
-enum class FrontendStatus { INITING, TRACKING_GOOD, TRACKING_BAD, LOST };
+enum class FrontendStatus { 
+    INITING,        // 初始化中
+    RACKING_GOOD,   // 跟踪良好
+    TRACKING_BAD,   // 跟踪较差
+    LOST            // 跟踪丢失，可能需要重定位
+}; 
 
 /**
  * 前端
@@ -22,7 +27,7 @@ enum class FrontendStatus { INITING, TRACKING_GOOD, TRACKING_BAD, LOST };
 class Frontend {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    typedef std::shared_ptr<Frontend> Ptr;
+    typedef std::shared_ptr<Frontend> Ptr; // Frontend的智能指针
 
     Frontend();
 
@@ -110,31 +115,38 @@ class Frontend {
      */
     void SetObservationsForKeyFrame();
 
-    // data
+    // data；前端状态，初始化为INITING；
     FrontendStatus status_ = FrontendStatus::INITING;
 
     Frame::Ptr current_frame_ = nullptr;  // 当前帧
     Frame::Ptr last_frame_ = nullptr;     // 上一帧
+
+    // 相机模型
     Camera::Ptr camera_left_ = nullptr;   // 左侧相机
     Camera::Ptr camera_right_ = nullptr;  // 右侧相机
 
+    // 地图模块
     Map::Ptr map_ = nullptr;
+
+    // 后端模块
     std::shared_ptr<Backend> backend_ = nullptr;
+
+    // 可视化模块
     std::shared_ptr<Viewer> viewer_ = nullptr;
 
     SE3 relative_motion_;  // 当前帧与上一帧的相对运动，用于估计当前帧pose初值
 
-    int tracking_inliers_ = 0;  // inliers, used for testing new keyframes
+    int tracking_inliers_ = 0;  // inliers, used for testing new keyframes；当前帧跟踪的内点数量
 
     // params
-    int num_features_ = 200;
-    int num_features_init_ = 100;
-    int num_features_tracking_ = 50;
-    int num_features_tracking_bad_ = 20;
-    int num_features_needed_for_keyframe_ = 80;
+    int num_features_ = 200;  // 特征点数量
+    int num_features_init_ = 100;   // 初始化时需要的特征点数量
+    int num_features_tracking_ = 50;    // 跟踪良好时的内点数量阈值
+    int num_features_tracking_bad_ = 20;    // 跟踪较差时的内点数量阈值
+    int num_features_needed_for_keyframe_ = 80; // 插入关键帧的内点数量阈值
 
     // utilities
-    cv::Ptr<cv::GFTTDetector> gftt_;  // feature detector in opencv
+    cv::Ptr<cv::GFTTDetector> gftt_;  // feature detector in opencv；OpenCV的特征点检测器
 };
 
 }  // namespace myslam

@@ -23,7 +23,7 @@ struct MapPoint {
     Vec3 pos_ = Vec3::Zero();  // Position in world
     std::mutex data_mutex_;
     int observed_times_ = 0;  // being observed by feature matching algo.
-    std::list<std::weak_ptr<Feature>> observations_;
+    std::list<std::weak_ptr<Feature>> observations_; // features that can observe this map point
 
     MapPoint() {}
 
@@ -39,6 +39,7 @@ struct MapPoint {
         pos_ = pos;
     };
 
+    // 增加一个观测feature特征点到该路标点的特征
     void AddObservation(std::shared_ptr<Feature> feature) {
         std::unique_lock<std::mutex> lck(data_mutex_);
         observations_.push_back(feature);
@@ -52,7 +53,7 @@ struct MapPoint {
         return observations_;
     }
 
-    // factory function
+    // factory function，工厂构建模式，分配id
     static MapPoint::Ptr CreateNewMappoint();
 };
 }  // namespace myslam

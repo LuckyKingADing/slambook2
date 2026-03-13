@@ -17,7 +17,10 @@ Backend::Backend() {
 }
 
 void Backend::UpdateMap() {
+    // 加锁以保护数据，防止多线程访问冲突
     std::unique_lock<std::mutex> lock(data_mutex_);
+
+    // 通知后端线程地图已更新，唤醒等待的线程
     map_update_.notify_one();
 }
 
