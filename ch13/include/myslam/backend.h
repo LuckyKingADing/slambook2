@@ -22,7 +22,7 @@ class Backend {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     typedef std::shared_ptr<Backend> Ptr;
 
-    /// 构造函数中启动优化线程并挂起
+    // 构造函数中启动优化线程并挂起
     Backend();
 
     // 设置左右目的相机，用于获得内外参

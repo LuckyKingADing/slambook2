@@ -314,7 +314,7 @@ int Frontend::DetectFeatures() {
                       feat->position_.pt + cv::Point2f(10, 10), 0, CV_FILLED); //使用 CV_FILLED 参数将矩形区域填充为 0，表示该区域不可用
     }
 
-    // 2. 特征点检测，使用opencv的GFTTDetector（Good Features to Track Detector）在当前帧的左图中检测特征点，先将检测到的特征点存储在一个 std::vector<cv::KeyPoint> 类型的变量 keypoints 中。检测过程中使用前面创建的掩膜（mask）来限制特征点的检测区域，确保在已经存在特征点的附近不会再次检测到特征点，从而提高特征点的质量和分布均匀性。
+    // 2.特征点检测，使用opencv的GFTTDetector（Good Features to Track Detector）在当前帧的左图中检测特征点，先将检测到的特征点存储在一个 std::vector<cv::KeyPoint> 类型的变量 keypoints 中。检测过程中使用前面创建的掩膜（mask）来限制特征点的检测区域，确保在已经存在特征点的附近不会再次检测到特征点，从而提高特征点的质量和分布均匀性。
     std::vector<cv::KeyPoint> keypoints;
     gftt_->detect(current_frame_->left_img_, keypoints, mask);
 
@@ -342,13 +342,13 @@ int Frontend::FindFeaturesInRight() {
     */
     std::vector<cv::Point2f> kps_left, kps_right;
     for (auto &kp : current_frame_->features_left_) {
-        kps_left.push_back(kp->position_.pt);
+        kps_left.push_back(kp->position_.pt); // 复制一份特征点到kps_left中，作为光流计算的输入
         // 判断左图特征点是否关联了地图点，如果关联了地图点，则将地图点投影到右图像中，作为初始猜测；如果没有关联地图点，则在右图像中使用与左图像相同的像素坐标
         auto mp = kp->map_point_.lock(); // lock() 方法将 std::weak_ptr 转换为 std::shared_ptr，如果地图点存在，则返回一个有效的 std::shared_ptr；否则返回空指针
         if (mp) { // 说明当前特征点已经关联了一个地图点
             // use projected points as initial guess
             /* - mp->pos_：地图点的三维坐标
-            *  - current_frame_->Pose()：当前帧的位姿（SE3类型），表示从世界坐标系到当前帧坐标系的变换。即为T_c_w，是左相机世界系 → 双目基线坐标系（左相机系）的变换。
+            *  - current_frame_->Pose()：当前帧的位姿（SE3类型），表示从世界坐标系到当前帧（因为是左相机，所以是左帧）坐标系的变换。即为T_c_w
             *  - camera_right_->world2pixel()：将地图点的三维坐标投影到右图像平面上，得到对应的二维像素坐标。这个函数内部会使用当前帧的位姿和相机内参来计算投影结果。
             */
             auto px =
@@ -393,13 +393,13 @@ int Frontend::FindFeaturesInRight() {
     */
     int num_good_pts = 0;
     for (size_t i = 0; i < status.size(); ++i) {
-        if (status[i]) {
+        if (status[i]) { // 如果匹配成功
             cv::KeyPoint kp(kps_right[i], 7); // kps_right[i] 是特征点的坐标。7 表示特征点的直径（大小），即特征点覆盖的区域大小为 7 像素
             Feature::Ptr feat(new Feature(current_frame_, kp));
             feat->is_on_left_image_ = false; // 标记该特征点位于右图像中
             current_frame_->features_right_.push_back(feat); 
             num_good_pts++;
-        } else {
+        } else { // 匹配失败，在右图特征点列表中添加 nullptr，表示该特征点没有匹配成功
             current_frame_->features_right_.push_back(nullptr);
         }
     }

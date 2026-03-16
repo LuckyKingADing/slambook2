@@ -58,7 +58,7 @@ void Backend::Optimize(Map::KeyframesType &keyframes,
     std::map<unsigned long, VertexPose *> vertices;
     unsigned long max_kf_id = 0;
     for (auto &keyframe : keyframes) {
-        auto kf = keyframe.second;
+        auto kf = keyframe.second; // second是Frame类型
         VertexPose *vertex_pose = new VertexPose();  // camera vertex_pose
         vertex_pose->setId(kf->keyframe_id_);
         vertex_pose->setEstimate(kf->Pose());
