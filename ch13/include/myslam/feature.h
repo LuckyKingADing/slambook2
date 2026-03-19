@@ -7,7 +7,7 @@
 #define MYSLAM_FEATURE_H
 
 #include <memory>
-#include <opencv2/features2d.hpp>
+#include </usr/include/opencv4/opencv2/features2d.hpp>
 #include "myslam/common_include.h"
 
 namespace myslam {

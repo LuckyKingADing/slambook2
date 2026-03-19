@@ -2,7 +2,7 @@
 // Created by gaoxiang on 19-5-2.
 //
 
-#include <opencv2/opencv.hpp>
+#include </usr/include/opencv4/opencv2/opencv.hpp>
 
 #include "myslam/algorithm.h"
 #include "myslam/backend.h"
@@ -154,8 +154,8 @@ int Frontend::EstimateCurrentPose() {
     typedef g2o::LinearSolverDense<BlockSolverType::PoseMatrixType>
         LinearSolverType;
     auto solver = new g2o::OptimizationAlgorithmLevenberg(
-        g2o::make_unique<BlockSolverType>(
-            g2o::make_unique<LinearSolverType>()));
+        std::make_unique<BlockSolverType>(
+            std::make_unique<LinearSolverType>()));
     g2o::SparseOptimizer optimizer;
     optimizer.setAlgorithm(solver);
 
@@ -311,7 +311,7 @@ int Frontend::DetectFeatures() {
     cv::Mat mask(current_frame_->left_img_.size(), CV_8UC1, 255);
     for (auto &feat : current_frame_->features_left_) {
         cv::rectangle(mask, feat->position_.pt - cv::Point2f(10, 10), 
-                      feat->position_.pt + cv::Point2f(10, 10), 0, CV_FILLED); //使用 CV_FILLED 参数将矩形区域填充为 0，表示该区域不可用
+                      feat->position_.pt + cv::Point2f(10, 10), 0, cv::FILLED); //使用 CV_FILLED 参数将矩形区域填充为 0，表示该区域不可用
     }
 
     // 2.特征点检测，使用opencv的GFTTDetector（Good Features to Track Detector）在当前帧的左图中检测特征点，先将检测到的特征点存储在一个 std::vector<cv::KeyPoint> 类型的变量 keypoints 中。检测过程中使用前面创建的掩膜（mask）来限制特征点的检测区域，确保在已经存在特征点的附近不会再次检测到特征点，从而提高特征点的质量和分布均匀性。

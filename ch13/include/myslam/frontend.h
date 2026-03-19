@@ -2,7 +2,7 @@
 #ifndef MYSLAM_FRONTEND_H
 #define MYSLAM_FRONTEND_H
 
-#include <opencv2/features2d.hpp>
+#include </usr/include/opencv4/opencv2/features2d.hpp>
 
 #include "myslam/common_include.h"
 #include "myslam/frame.h"
@@ -15,7 +15,7 @@ class Viewer;
 
 enum class FrontendStatus { 
     INITING,        // 初始化中
-    RACKING_GOOD,   // 跟踪良好
+    TRACKING_GOOD,   // 跟踪良好
     TRACKING_BAD,   // 跟踪较差
     LOST            // 跟踪丢失，可能需要重定位
 }; 
